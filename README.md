@@ -9,6 +9,7 @@ NEXORIS currently provides a small, read-only Windows desktop foundation: system
 - **System overview:** OS/runtime and architecture metadata plus process and uptime information.
 - **Hardware inventory:** motherboard/baseboard, BIOS/firmware, CPU, graphics adapters, memory modules, storage, physical network adapters, and Plug-and-Play device inventory through Windows Management Instrumentation (WMI).
 - **Device health assessment:** summarizes Windows-reported Plug-and-Play status codes, separates disconnected devices from reported problems, and suggests safe next checks. It is not a physical hardware self-test and does not repair devices.
+- **Full diagnostic report:** combines system overview, hardware inventory, and device health into one locally generated report; review device details before sharing it.
 - **Application inventory:** reads uninstall registry metadata; never runs uninstall strings.
 - **Cleanup preview:** lists a bounded number of old files from temporary locations; never deletes anything.
 - **Reports:** user chooses the path for a local text report.
