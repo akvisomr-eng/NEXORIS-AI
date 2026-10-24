@@ -26,7 +26,7 @@ jobs:
         run: choco install innosetup --no-progress -y
       - name: Build installer
         shell: pwsh
-        run: '& "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe" installer.iss'
+        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer.iss'
       - name: Generate SHA-256 checksum
         shell: pwsh
         run: Get-FileHash artifacts/installer/*.exe -Algorithm SHA256 | Format-List | Out-File artifacts/installer/SHA256SUMS.txt
