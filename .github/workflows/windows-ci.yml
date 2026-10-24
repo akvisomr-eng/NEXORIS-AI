@@ -1,0 +1,40 @@
+name: NEXORIS AI Windows CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore
+        run: dotnet restore NexorisAI/NexorisAI.csproj
+      - name: Build
+        run: dotnet build NexorisAI/NexorisAI.csproj --configuration Release --no-restore
+      - name: Publish self-contained x64
+        run: dotnet publish NexorisAI/NexorisAI.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output artifacts/NEXORIS-AI-win-x64
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+      - name: Build installer
+        shell: pwsh
+        run: '& "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe" installer.iss'
+      - name: Generate SHA-256 checksum
+        shell: pwsh
+        run: Get-FileHash artifacts/installer/*.exe -Algorithm SHA256 | Format-List | Out-File artifacts/installer/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NEXORIS-AI-preview-win-x64
+          path: |
+            artifacts/NEXORIS-AI-win-x64/
+            artifacts/installer/
+          if-no-files-found: error
+          retention-days: 14
