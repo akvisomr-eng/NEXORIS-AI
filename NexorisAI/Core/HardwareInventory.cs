@@ -1,7 +1,10 @@
 using Microsoft.Win32;
 using System.Management;
 using System.Runtime.InteropServices;
+
 namespace NexorisAI.Core;
+
+/// <summary>Best-effort, read-only hardware discovery. WMI and firmware data vary by device.</summary>
 public static class HardwareInventory
 {
     public static string Capture()
@@ -9,18 +12,26 @@ public static class HardwareInventory
         var lines = new List<string> { "HARDWARE DISCOVERY (best effort; read-only)" };
         AddWmi(lines, "Motherboard / Baseboard", "SELECT Manufacturer, Product, Version FROM Win32_BaseBoard", o => Join(o, "Manufacturer", "Product", "Version"));
         AddWmi(lines, "BIOS / Firmware", "SELECT Manufacturer, SMBIOSBIOSVersion, ReleaseDate FROM Win32_BIOS", o => Join(o, "Manufacturer", "SMBIOSBIOSVersion", "ReleaseDate"));
-        AddWmi(lines, "Processor", "SELECT Name, Manufacturer, NumberOfCores, NumberOfLogicalProcessors FROM Win32_Processor", o => Join(o, "Name", "Manufacturer", "NumberOfCores", "NumberOfLogicalProcessors"));
-        AddWmi(lines, "Graphics adapters", "SELECT Name, DriverVersion, AdapterRAM FROM Win32_VideoController", o => Join(o, "Name", "DriverVersion", "AdapterRAM"));
-        AddWmi(lines, "Memory modules", "SELECT Manufacturer, PartNumber, Capacity, Speed, ConfiguredClockSpeed FROM Win32_PhysicalMemory", o => Join(o, "Manufacturer", "PartNumber", "Capacity", "Speed", "ConfiguredClockSpeed"));
-        AddWmi(lines, "Storage devices", "SELECT Model, InterfaceType, MediaType, Status FROM Win32_DiskDrive", o => Join(o, "Model", "InterfaceType", "MediaType", "Status"));
-        AddWmi(lines, "Network adapters", "SELECT Name, Manufacturer, NetEnabled, Speed FROM Win32_NetworkAdapter WHERE PhysicalAdapter = TRUE", o => Join(o, "Name", "Manufacturer", "NetEnabled", "Speed"));
-        AddWmi(lines, "Plug-and-play devices (first 100)", "SELECT Name, Manufacturer, PNPClass, Status, ConfigManagerErrorCode FROM Win32_PnPEntity", o => Join(o, "Name", "Manufacturer", "PNPClass", "Status", "ConfigManagerErrorCode"), 100);
+        AddWmi(lines, "Processor", "SELECT Name, Manufacturer, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed FROM Win32_Processor", o => Join(o, "Name", "Manufacturer", "NumberOfCores", "NumberOfLogicalProcessors", "MaxClockSpeed"));
+        AddWmi(lines, "Graphics adapters", "SELECT Name, DriverVersion, AdapterRAM, Status, VideoModeDescription FROM Win32_VideoController", o => Join(o, "Name", "DriverVersion", "AdapterRAM", "Status", "VideoModeDescription"));
+        AddWmi(lines, "Memory modules", "SELECT Manufacturer, PartNumber, Capacity, Speed, ConfiguredClockSpeed, FormFactor FROM Win32_PhysicalMemory", o => Join(o, "Manufacturer", "PartNumber", "Capacity", "Speed", "ConfiguredClockSpeed", "FormFactor"));
+        AddWmi(lines, "Storage devices", "SELECT Model, Manufacturer, InterfaceType, MediaType, Status, Size FROM Win32_DiskDrive", o => Join(o, "Model", "Manufacturer", "InterfaceType", "MediaType", "Status", "Size"));
+        AddWmi(lines, "Logical volumes", "SELECT DeviceID, FileSystem, DriveType, Size, FreeSpace, VolumeName FROM Win32_LogicalDisk", o => Join(o, "DeviceID", "FileSystem", "DriveType", "Size", "FreeSpace", "VolumeName"));
+        AddWmi(lines, "Physical network adapters", "SELECT Name, Manufacturer, NetEnabled, Speed, AdapterType FROM Win32_NetworkAdapter WHERE PhysicalAdapter = TRUE", o => Join(o, "Name", "Manufacturer", "NetEnabled", "Speed", "AdapterType"));
+        AddWmi(lines, "Audio devices", "SELECT Name, Manufacturer, Status FROM Win32_SoundDevice", o => Join(o, "Name", "Manufacturer", "Status"));
+        AddWmi(lines, "Battery status", "SELECT Name, BatteryStatus, EstimatedChargeRemaining, EstimatedRunTime, DesignCapacity, FullChargeCapacity FROM Win32_Battery", o => Join(o, "Name", "BatteryStatus", "EstimatedChargeRemaining", "EstimatedRunTime", "DesignCapacity", "FullChargeCapacity"));
+        AddWmi(lines, "USB controllers", "SELECT Name, Manufacturer, Status FROM Win32_USBController", o => Join(o, "Name", "Manufacturer", "Status"));
+        AddWmi(lines, "Monitors", "SELECT Name, MonitorManufacturer, MonitorType, PixelsPerXLogicalInch, PixelsPerYLogicalInch FROM Win32_DesktopMonitor", o => Join(o, "Name", "MonitorManufacturer", "MonitorType", "PixelsPerXLogicalInch", "PixelsPerYLogicalInch"));
+        AddWmi(lines, "Printers", "SELECT Name, DriverName, PortName, PrinterStatus, WorkOffline FROM Win32_Printer", o => Join(o, "Name", "DriverName", "PortName", "PrinterStatus", "WorkOffline"));
+        AddWmi(lines, "Plug-and-play devices (first 250)", "SELECT Name, Manufacturer, PNPClass, Status, ConfigManagerErrorCode FROM Win32_PnPEntity", o => Join(o, "Name", "Manufacturer", "PNPClass", "Status", "ConfigManagerErrorCode"), 250);
         lines.Add("Windows build metadata: " + ReadWindowsBuild());
-        lines.Add("Privacy: serial numbers and MAC addresses are intentionally omitted.");
-        lines.Add("Limits: missing data can mean firmware/driver/provider does not expose it. Vendor-specific temperatures, fan speeds, EC registers and motherboard power rails require compatible drivers/interfaces or external instruments.");
+        lines.Add("Privacy: device serial numbers, MAC addresses, and unique hardware IDs are intentionally omitted.");
+        lines.Add("Important: WMI may omit devices or report stale/incomplete firmware data. Missing readings are unavailable, not proof of hardware failure.");
+        lines.Add("Limits: vendor-specific temperatures, fan speeds, embedded-controller registers, SMART/NVMe health, and motherboard power rails require supported drivers/interfaces or compatible external instruments.");
         return string.Join(Environment.NewLine, lines);
     }
-    private static void AddWmi(List<string> lines, string title, string query, Func<ManagementBaseObject, string> formatter, int limit = 30)
+
+    private static void AddWmi(List<string> lines, string title, string query, Func<ManagementBaseObject, string> formatter, int limit = 50)
     {
         lines.Add(Environment.NewLine + title + ":");
         try
@@ -33,14 +44,18 @@ public static class HardwareInventory
                 using (item)
                 {
                     var value = formatter(item);
-                    lines.Add("  - " + (string.IsNullOrWhiteSpace(value) ? "Reported; details unavailable" : value));
-                    if (++count >= limit) { lines.Add("  - Output limited for readability."); break; }
+                    lines.Add("  - " + (string.IsNullOrWhiteSpace(value) ? "Entry reported; details unavailable" : value));
+                    if (++count >= limit) { lines.Add("  - Output capped at " + limit + " entries."); break; }
                 }
             }
-            if (count == 0) lines.Add("  - No entries returned by this provider.");
+            if (count == 0) lines.Add("  - No entries returned by this provider (not necessarily absent).");
         }
-        catch (Exception ex) { lines.Add("  - Unavailable: " + ex.GetType().Name + " (provider, permission, or OS limitation)."); }
+        catch (Exception ex)
+        {
+            lines.Add("  - Unavailable: " + ex.GetType().Name + " (provider, permission, or OS capability limitation).");
+        }
     }
+
     private static string Join(ManagementBaseObject o, params string[] keys)
     {
         var parts = new List<string>();
@@ -54,6 +69,7 @@ public static class HardwareInventory
         }
         return string.Join(" | ", parts);
     }
+
     private static string ReadWindowsBuild()
     {
         try
