@@ -14,6 +14,7 @@ public sealed class MainForm : Form
         AddButton(buttons, "System overview", () => ShowResult(SystemSnapshot.Capture()));
         AddButton(buttons, "Hardware inventory", () => ShowResult(HardwareInventory.Capture()));
         AddButton(buttons, "Device health", () => ShowResult(DeviceHealthAssessment.Capture()));
+        AddButton(buttons, "Full diagnostic", () => ShowResult(FullDiagnosticReport.Capture()));
         AddButton(buttons, "Installed apps", () => ShowResult(InstalledAppReader.Capture()));
         AddButton(buttons, "Cleanup preview", () => ShowResult(CleanupScanner.Preview()));
         AddButton(buttons, "Save report", SaveReport);
