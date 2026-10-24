@@ -13,6 +13,7 @@ public sealed class MainForm : Form
         var buttons = new FlowLayoutPanel { Location = new Point(22, 98), Height = 48, Width = 1050, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, WrapContents = false, BackColor = BackColor };
         AddButton(buttons, "System overview", () => ShowResult(SystemSnapshot.Capture()));
         AddButton(buttons, "Hardware inventory", () => ShowResult(HardwareInventory.Capture()));
+        AddButton(buttons, "Device health", () => ShowResult(DeviceHealthAssessment.Capture()));
         AddButton(buttons, "Installed apps", () => ShowResult(InstalledAppReader.Capture()));
         AddButton(buttons, "Cleanup preview", () => ShowResult(CleanupScanner.Preview()));
         AddButton(buttons, "Save report", SaveReport);
