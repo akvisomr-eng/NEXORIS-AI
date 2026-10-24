@@ -1,21 +1,46 @@
 # NEXORIS AI
 
-Intelligent Computer Diagnostics & Maintenance.
+**Intelligent Computer Diagnostics & Maintenance** — Windows-first and offline-first.
 
-Windows-first, offline-first diagnostics with safe, read-only inspection by default.
+NEXORIS currently provides a small, read-only Windows desktop foundation: system overview, best-effort WMI hardware inventory, installed-application inventory, non-destructive temporary-file cleanup preview, and text report export.
 
-## Compatibility strategy
+## Implemented foundation
 
-Detect Windows product/version/build/architecture and hardware capabilities using supported Windows APIs, WMI/CIM, Plug-and-Play device data, and firmware-exposed SMBIOS information. Motherboard sensors, fan controls, electrical readings, and vendor-specific functions require compatible drivers, vendor interfaces, or external instruments. Missing readings must be reported as unavailable, never fabricated.
+- **System overview:** OS/runtime and architecture metadata plus process and uptime information.
+- **Hardware inventory:** motherboard/baseboard, BIOS/firmware, CPU, graphics adapters, memory modules, storage, physical network adapters, and Plug-and-Play device inventory through Windows Management Instrumentation (WMI).
+- **Application inventory:** reads uninstall registry metadata; never runs uninstall strings.
+- **Cleanup preview:** lists a bounded number of old files from temporary locations; never deletes anything.
+- **Reports:** user chooses the path for a local text report.
+- **Build pipeline:** Windows GitHub Actions build, self-contained x64 publish, Inno Setup installer, and SHA-256 checksum artifact.
 
-## Safety
+## Compatibility policy
 
-- Read-only diagnostics by default.
-- Cleanup preview only; never automatically delete user files.
-- Never execute arbitrary registry uninstall strings or AI-generated commands.
-- Repairs require explicit approval, validated allowlists, audit logs, and post-action verification.
-- Never disable Defender, firewall, Windows Update, or security services as an optimization.
+This is **best-effort detection, not a promise of universal compatibility**. Actual coverage depends on Windows edition/build, architecture, drivers, firmware/SMBIOS data, permissions, and each device's exposed interfaces. The current build targets **Windows 10/11 x64 using .NET 8**; older Windows releases and ARM64 need separate target/runtime decisions and real-device tests before being claimed as supported. Unknown or unavailable values must be reported as unavailable, not fabricated.
+
+Vendor-specific temperature sensors, fan control, embedded-controller registers, SMART/NVMe health details, and motherboard electrical rails may need supported drivers, vendor interfaces, or compatible external instruments. Software alone cannot measure physical voltage/current on arbitrary hardware.
+
+## Safety and privacy
+
+- Read-only diagnostics by default; cleanup is preview-only.
+- No automatic deletion of user files.
+- No arbitrary command execution, AI-generated command execution, or uninstall-string execution.
+- No disabling Defender, firewall, Windows Update, or other security services.
+- Reports are saved only when the user explicitly chooses a destination.
+- No telemetry, account requirement, or cloud API call is implemented in this desktop foundation.
+- Any future repair workflow must require explicit consent, a strict allowlist, a clear impact preview, an audit trail, and post-action verification.
+
+## Build and run
+
+Open `NexorisAI/NexorisAI.csproj` on a Windows development machine with the .NET 8 SDK, then build in Release configuration. GitHub Actions is configured to publish a self-contained x64 preview and package it using Inno Setup. Installer/build success must be confirmed from the actual workflow run before distributing an artifact.
+
+## Roadmap (not yet implemented)
+
+1. Test matrix for supported Windows builds, physical devices, VMs, permissions, and non-English environments.
+2. More robust PnP/SetupAPI and storage-health discovery with explicit support/unknown states.
+3. Safe repair planner, allowlisted operations, user confirmation, audit log, and post-action verification.
+4. Optional AI multi-agent orchestration behind provider, privacy, rate-limit, and safety gates; disabled until tested.
+5. Technician workflows and compatible external-instrument adapters for electrical measurements.
 
 ## Status
 
-Development foundation only. Compatibility and commercial readiness require CI, installer validation, and tests on real Windows versions and hardware.
+**Development preview foundation — not production-certified.** No claim of universal motherboard/peripheral support, successful installer validation, or hardware test coverage is made until backed by CI and real-device evidence.
