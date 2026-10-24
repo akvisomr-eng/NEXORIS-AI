@@ -23,7 +23,7 @@ public static class HardwareInventory
         AddWmi(lines, "USB controllers", "SELECT Name, Manufacturer, Status FROM Win32_USBController", o => Join(o, "Name", "Manufacturer", "Status"));
         AddWmi(lines, "Monitors", "SELECT Name, MonitorManufacturer, MonitorType, PixelsPerXLogicalInch, PixelsPerYLogicalInch FROM Win32_DesktopMonitor", o => Join(o, "Name", "MonitorManufacturer", "MonitorType", "PixelsPerXLogicalInch", "PixelsPerYLogicalInch"));
         AddWmi(lines, "Printers", "SELECT Name, DriverName, PortName, PrinterStatus, WorkOffline FROM Win32_Printer", o => Join(o, "Name", "DriverName", "PortName", "PrinterStatus", "WorkOffline"));
-        AddWmi(lines, "Plug-and-play devices (first 250)", "SELECT Name, Manufacturer, PNPClass, Status, ConfigManagerErrorCode FROM Win32_PnPEntity", o => Join(o, "Name", "Manufacturer", "PNPClass", "Status", "ConfigManagerErrorCode"), 250);
+        AddWmi(lines, "Plug-and-play devices (first 250)", "SELECT Name, Manufacturer, PNPClass, Status, ConfigManagerErrorCode FROM Win32_PnPEntity", o => Join(o, "Name", "Manufacturer", "PNPClass", "Status") + DescribePnpCode(o), 250);
         lines.Add("Windows build metadata: " + ReadWindowsBuild());
         lines.Add("Privacy: device serial numbers, MAC addresses, and unique hardware IDs are intentionally omitted.");
         lines.Add("Important: WMI may omit devices or report stale/incomplete firmware data. Missing readings are unavailable, not proof of hardware failure.");
@@ -54,6 +54,46 @@ public static class HardwareInventory
         {
             lines.Add("  - Unavailable: " + ex.GetType().Name + " (provider, permission, or OS capability limitation).");
         }
+    }
+
+    private static string DescribePnpCode(ManagementBaseObject device)
+    {
+        object? raw;
+        try { raw = device["ConfigManagerErrorCode"]; } catch { raw = null; }
+        if (raw is null || !int.TryParse(Convert.ToString(raw), out var code))
+            return " | Device/driver diagnostic: status code unavailable";
+        var description = code switch
+        {
+            0 => "Windows reports the device is working properly",
+            1 => "device is not configured correctly",
+            3 => "driver may be corrupted or system resources may be low",
+            10 => "device cannot start",
+            12 => "device cannot find enough free resources",
+            14 => "Windows reports a restart is required",
+            18 => "driver should be reinstalled",
+            22 => "device is disabled",
+            24 => "device is not present, not working properly, or does not have all drivers installed",
+            28 => "drivers are not installed",
+            29 => "device is disabled by firmware",
+            31 => "Windows cannot load the required drivers",
+            32 => "driver service is disabled",
+            33 => "Windows cannot determine the resources required",
+            34 => "Windows cannot determine device settings",
+            37 => "driver failed initialization",
+            38 => "driver could not load because a previous instance is still loaded",
+            39 => "driver is missing or corrupted",
+            40 => "Windows cannot access the driver service configuration",
+            41 => "driver loaded but Windows could not find the device",
+            42 => "duplicate device detected",
+            43 => "Windows stopped the device after it reported a problem",
+            44 => "an application or service shut down the device",
+            45 => "device is not currently connected",
+            48 => "driver has been blocked due to a known compatibility problem",
+            49 => "Windows cannot start the device because the system registry is too large",
+            _ when code == 0 => "Windows reports no device error",
+            _ => "Windows returned an unclassified device status"
+        };
+        return " | ConfigManagerErrorCode: " + code + " (" + description + ")";
     }
 
     private static string Join(ManagementBaseObject o, params string[] keys)
