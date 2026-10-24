@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net8.0-windows</TargetFramework><UseWindowsForms>true</UseWindowsForms><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><AssemblyName>NEXORIS.AI</AssemblyName><RootNamespace>NexorisAI</RootNamespace><ApplicationManifest>app.manifest</ApplicationManifest><Version>0.1.0</Version><Authors>akvisomr-eng</Authors><Product>NEXORIS AI</Product><Description>Offline-first computer diagnostics and maintenance assistant.</Description></PropertyGroup>
+  <ItemGroup><PackageReference Include="System.Management" Version="8.0.0" /></ItemGroup>
+</Project>
