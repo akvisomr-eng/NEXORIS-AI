@@ -90,7 +90,6 @@ public static class HardwareInventory
             45 => "device is not currently connected",
             48 => "driver has been blocked due to a known compatibility problem",
             49 => "Windows cannot start the device because the system registry is too large",
-            _ when code == 0 => "Windows reports no device error",
             _ => "Windows returned an unclassified device status"
         };
         return " | ConfigManagerErrorCode: " + code + " (" + description + ")";
