@@ -27,6 +27,23 @@ jobs:
       - name: Build installer
         shell: pwsh
         run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer.iss'
+      - name: Installer install/uninstall smoke test
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem "artifacts/installer/NEXORIS-AI-Setup-*-win-x64.exe" | Select-Object -First 1
+          if ($null -eq $installer) { throw "Installer output was not found." }
+          $install = Start-Process -FilePath $installer.FullName -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-") -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Silent installer returned exit code $($install.ExitCode)." }
+          $appDir = Join-Path $env:LOCALAPPDATA "Programs/NEXORIS AI"
+          $appExe = Join-Path $appDir "NEXORIS.AI.exe"
+          if (-not (Test-Path $appExe)) { throw "Installed application executable was not found at $appExe" }
+          $uninstaller = Join-Path $appDir "unins000.exe"
+          if (-not (Test-Path $uninstaller)) { throw "Uninstaller was not created." }
+          $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART") -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Silent uninstaller returned exit code $($uninstall.ExitCode)." }
+          if (Test-Path $appExe) { throw "Application executable remains after uninstall." }
+          Write-Output "Install/uninstall smoke test passed on GitHub-hosted Windows runner. This does not replace real-device QA."
+
       - name: Generate SHA-256 checksum
         shell: pwsh
         run: Get-FileHash artifacts/installer/*.exe -Algorithm SHA256 | Format-List | Out-File artifacts/installer/SHA256SUMS.txt
