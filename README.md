@@ -14,6 +14,7 @@ NEXORIS currently provides a small, read-only Windows desktop foundation: system
 - **Cleanup preview:** lists a bounded number of old files from temporary locations; never deletes anything.
 - **Reports:** user chooses the path for a local text report.
 - **Build pipeline:** Windows GitHub Actions build, self-contained x64 publish, Inno Setup installer, and SHA-256 checksum artifact.
+- **Versioned release workflow:** tag/manual-triggered build designed to create a **draft** GitHub Release with the installer, checksum, portable ZIP, and release documents. A draft is not a public or commercially approved release.
 
 ## Compatibility policy
 
@@ -30,10 +31,15 @@ Vendor-specific temperature sensors, fan control, embedded-controller registers,
 - Reports are saved only when the user explicitly chooses a destination.
 - No telemetry, account requirement, or cloud API call is implemented in this desktop foundation.
 - Any future repair workflow must require explicit consent, a strict allowlist, a clear impact preview, an audit trail, and post-action verification.
+- See [Privacy Notice (draft)](docs/PRIVACY.md) and [Commercial License Decision (draft)](docs/COMMERCIAL-LICENSE-DRAFT.md).
 
 ## Build and run
 
 Open `NexorisAI/NexorisAI.csproj` on a Windows development machine with the .NET 8 SDK, then build in Release configuration. GitHub Actions is configured to publish a self-contained x64 preview and package it using Inno Setup. Installer/build success must be confirmed from the actual workflow run before distributing an artifact.
+
+## Commercial release gate
+
+Follow [Release Acceptance Checklist](docs/RELEASE-CHECKLIST.md). A successful CI build is not a substitute for real-machine install/launch/uninstall tests, security/dependency review, approved license terms, an approved privacy notice, support policy, and code-signing decision. The current app does not implement AI multi-agent orchestration, automatic repair, subscription/license activation, or physical electrical measurement.
 
 ## Roadmap (not yet implemented)
 
@@ -45,4 +51,4 @@ Open `NexorisAI/NexorisAI.csproj` on a Windows development machine with the .NET
 
 ## Status
 
-**Development preview foundation — not production-certified.** No claim of universal motherboard/peripheral support, successful installer validation, or hardware test coverage is made until backed by CI and real-device evidence.
+**Development preview / release-candidate preparation — not production-certified.** No claim of universal motherboard/peripheral support, successful real-machine installer validation, or hardware test coverage is made until backed by evidence.
