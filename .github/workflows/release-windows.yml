@@ -72,7 +72,7 @@ jobs:
       - name: Installer install/uninstall smoke test
         shell: pwsh
         run: |
-          $installer = Get-ChildItem "artifacts/installer/NEXORIS-AI-Setup-$env:NEXORIS_VERSION-win-x64.exe" | Select-Object -First 1
+          $installer = Get-ChildItem "artifacts/installer/NEXORIS-AI-Setup-$($env:NEXORIS_VERSION)-win-x64.exe" | Select-Object -First 1
           if ($null -eq $installer) { throw "Installer output was not found." }
           $install = Start-Process -FilePath $installer.FullName -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-") -Wait -PassThru
           if ($install.ExitCode -ne 0) { throw "Silent installer returned exit code $($install.ExitCode)." }
@@ -101,7 +101,7 @@ jobs:
       - name: Package portable build
         shell: pwsh
         run: |
-          Compress-Archive -Path "artifacts/NEXORIS-AI-win-x64/*" -DestinationPath "artifacts/NEXORIS-AI-$env:NEXORIS_VERSION-win-x64-portable.zip"
+          Compress-Archive -Path "artifacts/NEXORIS-AI-win-x64/*" -DestinationPath "artifacts/NEXORIS-AI-$($env:NEXORIS_VERSION)-win-x64-portable.zip"
           Copy-Item "docs/RELEASE-CHECKLIST.md" "artifacts/installer/RELEASE-CHECKLIST.md"
           Copy-Item "docs/PRIVACY.md" "artifacts/installer/PRIVACY-DRAFT.md"
 
