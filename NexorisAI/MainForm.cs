@@ -14,12 +14,12 @@ public sealed class MainForm : Form
         var title = new Label { Text = "NEXORIS AI", Font = new Font("Segoe UI", 20, FontStyle.Bold), AutoSize = true, ForeColor = Color.FromArgb(111, 214, 199), Location = new Point(22, 18) };
         var subtitle = new Label { Text = "Offline-first diagnostics • read-only by default", AutoSize = true, ForeColor = Color.LightGray, Location = new Point(25, 62) };
         buttons.Location = new Point(22, 98); buttons.Height = 48; buttons.Width = 1050; buttons.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right; buttons.WrapContents = false; buttons.BackColor = BackColor;
-        AddButton(buttons, "System overview", () => ShowResult(SystemSnapshot.Capture()));
-        AddButton(buttons, "Hardware inventory", () => ShowResult(HardwareInventory.Capture()));
-        AddButton(buttons, "Device health", () => ShowResult(DeviceHealthAssessment.Capture()));
+        AddAsyncButton(buttons, "System overview", SystemSnapshot.Capture);
+        AddAsyncButton(buttons, "Hardware inventory", HardwareInventory.Capture);
+        AddAsyncButton(buttons, "Device health", DeviceHealthAssessment.Capture);
         AddAsyncButton(buttons, "Full diagnostic", FullDiagnosticReport.Capture);
-        AddButton(buttons, "Installed apps", () => ShowResult(InstalledAppReader.Capture()));
-        AddButton(buttons, "Cleanup preview", () => ShowResult(CleanupScanner.Preview()));
+        AddAsyncButton(buttons, "Installed apps", InstalledAppReader.Capture);
+        AddAsyncButton(buttons, "Cleanup preview", CleanupScanner.Preview);
         AddButton(buttons, "Save report", SaveReport);
         output.Location = new Point(22, 158); output.Size = new Size(1050, 500); output.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
         output.Multiline = true; output.ReadOnly = true; output.WordWrap = false; output.ScrollBars = ScrollBars.Both; output.Font = new Font("Consolas", 10);

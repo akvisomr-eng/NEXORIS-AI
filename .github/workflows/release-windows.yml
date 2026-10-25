@@ -1,0 +1,103 @@
+name: NEXORIS AI Windows Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version, e.g. 0.9.0-rc.1 (without leading v)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Validate release version
+        shell: pwsh
+        env:
+          RELEASE_EVENT: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if ($env:RELEASE_EVENT -eq "workflow_dispatch") {
+            $version = $env:INPUT_VERSION
+          } else {
+            $version = $env:REF_NAME.TrimStart("v")
+          }
+          if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$') {
+            throw "Invalid release version: $version"
+          }
+          "NEXORIS_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "NEXORIS_TAG=v$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore NexorisAI/NexorisAI.csproj
+
+      - name: Build Release
+        shell: pwsh
+        run: dotnet build NexorisAI/NexorisAI.csproj --configuration Release --no-restore -p:Version=$env:NEXORIS_VERSION
+
+      - name: Publish self-contained Windows x64
+        shell: pwsh
+        run: dotnet publish NexorisAI/NexorisAI.csproj --configuration Release --runtime win-x64 --self-contained true -p:Version=$env:NEXORIS_VERSION -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output artifacts/NEXORIS-AI-win-x64
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Set installer version
+        shell: pwsh
+        run: |
+          $path = "installer.iss"
+          $source = Get-Content $path -Raw
+          $source = $source -replace '(?m)^#define AppVersion ".*"$', ('#define AppVersion "' + $env:NEXORIS_VERSION + '"')
+          Set-Content -Path $path -Value $source -Encoding utf8
+
+      - name: Build installer
+        shell: pwsh
+        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer.iss'
+
+      - name: Verify package and checksum
+        shell: pwsh
+        run: |
+          $installer = "artifacts/installer/NEXORIS-AI-Setup-$env:NEXORIS_VERSION-win-x64.exe"
+          if (-not (Test-Path $installer)) { throw "Expected installer missing: $installer" }
+          $hash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $(Split-Path $installer -Leaf)" | Set-Content "artifacts/installer/SHA256SUMS.txt" -Encoding ascii
+          $actual = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne $actual) { throw "SHA-256 verification failed" }
+          Get-Item $installer | Format-List Name,Length
+          Get-Content "artifacts/installer/SHA256SUMS.txt"
+
+      - name: Package portable build
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "artifacts/NEXORIS-AI-win-x64/*" -DestinationPath "artifacts/NEXORIS-AI-$env:NEXORIS_VERSION-win-x64-portable.zip"
+          Copy-Item "docs/RELEASE-CHECKLIST.md" "artifacts/installer/RELEASE-CHECKLIST.md"
+          Copy-Item "docs/PRIVACY.md" "artifacts/installer/PRIVACY-DRAFT.md"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.NEXORIS_TAG }}
+          name: NEXORIS AI ${{ env.NEXORIS_TAG }}
+          draft: true
+          prerelease: ${{ contains(env.NEXORIS_VERSION, '-') }}
+          generate_release_notes: true
+          files: |
+            artifacts/installer/NEXORIS-AI-Setup-${{ env.NEXORIS_VERSION }}-win-x64.exe
+            artifacts/installer/SHA256SUMS.txt
+            artifacts/NEXORIS-AI-${{ env.NEXORIS_VERSION }}-win-x64-portable.zip
+            artifacts/installer/RELEASE-CHECKLIST.md
+            artifacts/installer/PRIVACY-DRAFT.md
