@@ -22,6 +22,7 @@ public static class DeviceHealthAssessment
         var informational = 0;
         var unavailable = 0;
         var inspected = 0;
+        var unreadable = 0;
 
         try
         {
@@ -33,24 +34,32 @@ public static class DeviceHealthAssessment
                 using (device)
                 {
                     inspected++;
-                    var name = Convert.ToString(device["Name"])?.Trim();
-                    var category = Convert.ToString(device["PNPClass"])?.Trim();
-                    var raw = device["ConfigManagerErrorCode"];
-                    if (raw is null || !int.TryParse(Convert.ToString(raw), out var code))
+                    try
                     {
-                        unavailable++;
-                        continue;
+                        var name = ReadProperty(device, "Name");
+                        var category = ReadProperty(device, "PNPClass");
+                        var raw = ReadRawProperty(device, "ConfigManagerErrorCode");
+                        if (raw is null || !int.TryParse(Convert.ToString(raw), out var code))
+                        {
+                            unavailable++;
+                            continue;
+                        }
+
+                        if (code == 0) { normal++; continue; }
+                        if (code == 45) { informational++; continue; }
+
+                        attention++;
+                        lines.Add($"[{Severity(code)}] {Safe(name)}" +
+                                  (string.IsNullOrWhiteSpace(category) ? "" : $" | Class: {category}") +
+                                  $" | Code {code}: {Describe(code)}");
+                        lines.Add("  Suggested next step: " + Recommendation(code));
+                        lines.Add("");
                     }
-
-                    if (code == 0) { normal++; continue; }
-                    if (code == 45) { informational++; continue; }
-
-                    attention++;
-                    lines.Add($"[{Severity(code)}] {Safe(name)}" +
-                              (string.IsNullOrWhiteSpace(category) ? "" : $" | Class: {category}") +
-                              $" | Code {code}: {Describe(code)}");
-                    lines.Add("  Suggested next step: " + Recommendation(code));
-                    lines.Add("");
+                    catch
+                    {
+                        // A malformed or inaccessible record should not discard other devices.
+                        unreadable++;
+                    }
                 }
             }
         }
@@ -62,9 +71,9 @@ public static class DeviceHealthAssessment
             return string.Join(Environment.NewLine, lines);
         }
 
-        lines.Insert(4, $"Devices inspected: {inspected} | Normal: {normal} | Needs attention: {attention} | Disconnected: {informational} | Status unavailable: {unavailable}");
+        lines.Insert(4, $"Devices inspected: {inspected} | Normal: {normal} | Needs attention: {attention} | Disconnected: {informational} | Status unavailable: {unavailable} | Records unreadable: {unreadable}");
         if (attention == 0)
-            lines.Add("No nonzero device status codes were found in the returned records.");
+            lines.Add("No nonzero device status codes requiring attention were found in the readable records.");
         else
             lines.Add("Prioritize critical work devices, then check Device Manager and vendor-supplied driver/firmware information before making changes.");
 
@@ -73,6 +82,15 @@ public static class DeviceHealthAssessment
         lines.Add("NEXORIS has not changed drivers, settings, services, or device state.");
         return string.Join(Environment.NewLine, lines);
     }
+
+    private static object? ReadRawProperty(ManagementBaseObject device, string property)
+    {
+        try { return device[property]; }
+        catch { return null; }
+    }
+
+    private static string? ReadProperty(ManagementBaseObject device, string property) =>
+        Convert.ToString(ReadRawProperty(device, property))?.Trim();
 
     private static string Severity(int code) => code switch
     {
